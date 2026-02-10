@@ -1,179 +1,111 @@
+"""
+Supabase database utilities.
+All CRUD operations now use Supabase instead of SQLAlchemy/SQLite.
+"""
 from fastapi import HTTPException
-from sqlalchemy.future import select
-import uuid
-
-from app.configs.db import async_session
+from app.configs.supabase import get_supabase
 
 
-async def get_all(model):
-    async with async_session() as db:
-        result = await db.execute(select(model))
-        objs = result.scalars().all()
-        return objs
+async def get_all(table_name: str):
+    """Get all records from a table."""
+    client = get_supabase()
+    if not client:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
     
-async def get_all_by_field(model, field_name: str, field_value):
-    """
-    Récupère tous les objets du modèle où field_name == field_value.
-    """
-    async with async_session() as db:
-        stmt = select(model).where(getattr(model, field_name) == field_value)
-        result = await db.execute(stmt)
-        objs = result.scalars().all()
-        return objs
+    result = client.table(table_name).select("*").execute()
+    return result.data
+
+
+async def get_all_by_field(table_name: str, field_name: str, field_value):
+    """Get all records where field matches value."""
+    client = get_supabase()
+    if not client:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
     
-async def get_all_with_relations(model, options=None):
-    """
-    Récupère tous les objets du modèle en chargeant explicitement les relations passées dans options.
-    :param model: Le modèle SQLAlchemy
-    :param options: Liste d'options de chargement (ex: [selectinload(Model.relation)])
-    :return: Liste des objets du modèle avec les relations chargées
-    """
-    async with async_session() as db:
-        stmt = select(model)
-        if options:
-            for opt in options:
-                stmt = stmt.options(opt)
-        result = await db.execute(stmt)
-        objs = result.scalars().all()
-        return objs
+    result = client.table(table_name).select("*").eq(field_name, field_value).execute()
+    return result.data
 
-async def create(model, data: dict):
-    async with async_session() as db:
-        try:
-            obj = model(**data)
-            db.add(obj)
-            await db.commit()
-            await db.refresh(obj)
-            return obj
-        except Exception as e:
-            await db.rollback()
-            raise HTTPException(status_code=500, detail=str(e)) from e
 
-async def get_by_id(model, obj_id):
-    async with async_session() as db:
-        obj = await db.get(model, obj_id)
-        if not obj:
+async def create(table_name: str, data: dict):
+    """Create a new record."""
+    client = get_supabase()
+    if not client:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    
+    try:
+        result = client.table(table_name).insert(data).execute()
+        if result.data:
+            return result.data[0]
+        raise HTTPException(status_code=500, detail="Failed to create record")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+async def get_by_id(table_name: str, obj_id: int):
+    """Get a record by ID."""
+    client = get_supabase()
+    if not client:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    
+    result = client.table(table_name).select("*").eq("id", obj_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Not found")
+    return result.data[0]
+
+
+async def update(table_name: str, obj_id: int, data: dict):
+    """Update a record by ID."""
+    client = get_supabase()
+    if not client:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    
+    try:
+        result = client.table(table_name).update(data).eq("id", obj_id).execute()
+        if not result.data:
             raise HTTPException(status_code=404, detail="Not found")
-        return obj
+        return result.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
-async def update(model, obj_id, data: dict):
-    async with async_session() as db:
-        obj = await db.get(model, obj_id)
-        if not obj:
+
+async def delete(table_name: str, obj_id: int):
+    """Delete a record by ID."""
+    client = get_supabase()
+    if not client:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    
+    try:
+        result = client.table(table_name).delete().eq("id", obj_id).execute()
+        if not result.data:
             raise HTTPException(status_code=404, detail="Not found")
-        for key, value in data.items():
-            setattr(obj, key, value)
-        try:
-            await db.commit()
-            await db.refresh(obj)
-            return obj
-        except Exception as e:
-            await db.rollback()
-            raise HTTPException(status_code=500, detail=str(e)) from e
+        return True
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
-async def delete(model, obj_id):
-    async with async_session() as db:
-        obj = await db.get(model, obj_id)
-        if not obj:
-            raise HTTPException(status_code=404, detail="Not found")
-        try:
-            await db.delete(obj)
-            await db.commit()
-        except Exception as e:
-            await db.rollback()
-            raise HTTPException(status_code=500, detail=str(e)) from e
 
-async def get_by_fields(model, fields: dict):
-    async with async_session() as db:
-        stmt = select(model)
-        for key, value in fields.items():
-            stmt = stmt.where(getattr(model, key) == value)
-        result = await db.execute(stmt)
-        obj = result.scalars().first()
-        if not obj:
-            return None
-        return obj
+async def get_by_fields(table_name: str, fields: dict):
+    """Get first record matching all fields."""
+    client = get_supabase()
+    if not client:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    
+    query = client.table(table_name).select("*")
+    for key, value in fields.items():
+        query = query.eq(key, value)
+    result = query.limit(1).execute()
+    
+    if not result.data:
+        return None
+    return result.data[0]
 
-async def get_by_field(model, field_name: str, field_value):
-    async with async_session() as db:
-        stmt = select(model).where(getattr(model, field_name) == field_value)
-        result = await db.execute(stmt)
-        obj = result.scalars().first()
-        if not obj:
-            return None
-        return obj
 
-async def update_links(
-    link_model,  # ex: RolePermissions
-    left_key: str,  # ex: "role_id"
-    right_key: str,  # ex: "permission_id"
-    left_id,
-    right_ids: list
-):
-    """
-    Met à jour les liens d'une table de liaison (many-to-many).
-    Supprime les anciens liens et ajoute les nouveaux.
-    """
-    async with async_session() as db:
-        # Supprimer les anciens liens
-        await db.execute(
-            link_model.__table__.delete().where(getattr(link_model, left_key) == left_id)
-        )
-        # Ajouter les nouveaux liens
-        for right_id in right_ids:
-            db.add(link_model(
-                id=uuid.uuid4(),
-                **{left_key: left_id, right_key: right_id}
-            ))
-        await db.commit()
-
-async def assign_link(
-    link_model,
-    left_key: str,
-    right_key: str,
-    left_id,
-    right_id
-):
-    """
-    Assigne un lien dans une table de liaison (many-to-many).
-    """
-    async with async_session() as db:
-        stmt = select(link_model).where(
-            (getattr(link_model, left_key) == left_id) &
-            (getattr(link_model, right_key) == right_id)
-        )
-        result = await db.execute(stmt)
-        existing = result.scalars().first()
-        if existing:
-            raise HTTPException(status_code=400, detail="Lien déjà existant.")
-        db.add(link_model(
-            id=uuid.uuid4(),
-            **{left_key: left_id, right_key: right_id}
-        ))
-        await db.commit()
-
-async def unassign_link(
-    link_model,
-    left_key: str,
-    right_key: str,
-    left_id,
-    right_id
-):
-    """
-    Désassigne un lien dans une table de liaison (many-to-many).
-    """
-    async with async_session() as db:
-        await db.execute(
-            link_model.__table__.delete().where(
-                (getattr(link_model, left_key) == left_id) &
-                (getattr(link_model, right_key) == right_id)
-            )
-        )
-        await db.commit()
-
-async def delete_links(link_model, left_key: str, left_id):
-    async with async_session() as db:
-        await db.execute(
-            link_model.__table__.delete().where(getattr(link_model, left_key) == left_id)
-        )
-        await db.commit()
+async def get_by_field(table_name: str, field_name: str, field_value):
+    """Get first record where field matches value."""
+    client = get_supabase()
+    if not client:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    
+    result = client.table(table_name).select("*").eq(field_name, field_value).limit(1).execute()
+    if not result.data:
+        return None
+    return result.data[0]

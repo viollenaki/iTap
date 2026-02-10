@@ -1,23 +1,13 @@
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI
-from contextlib import asynccontextmanager
 
 from app.routers.products import router as products_router
-from app.configs.db import engine
-from app.configs.tables import Base
+from app.routers.users import router as users_router
 from app.configs.firebase import check_firebase_connection
 from app.configs.supabase import check_supabase_connection
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Create tables on startup
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    yield
-
-
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -27,6 +17,7 @@ app.add_middleware(
 )
 
 app.include_router(products_router)
+app.include_router(users_router)
 
 @app.get("/", tags=["root"])
 async def read_root() -> dict:

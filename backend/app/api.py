@@ -6,6 +6,7 @@ from app.routers.products import router as products_router
 from app.configs.db import engine
 from app.configs.tables import Base
 from app.configs.firebase import check_firebase_connection
+from app.configs.supabase import check_supabase_connection
 
 
 @asynccontextmanager
@@ -36,5 +37,11 @@ async def read_root() -> dict:
 async def firebase_health() -> dict:
     """Check Firebase connection status."""
     return check_firebase_connection()
+
+
+@app.get("/health/supabase", tags=["health"])
+async def supabase_health() -> dict:
+    """Check Supabase connection status."""
+    return check_supabase_connection()
 
 

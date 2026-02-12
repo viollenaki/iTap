@@ -1,0 +1,8 @@
+.authLayout {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px 20px;
+  background: radial-gradient(circle at top right, #fff5ed, #f1eee8 55%);
+  color: #161616;
+}

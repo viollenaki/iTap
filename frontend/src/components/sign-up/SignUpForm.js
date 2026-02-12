@@ -6,7 +6,7 @@ import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } f
 import { auth } from "@/lib/firebase";
 import { saveUserProfile } from "@/features/auth/api/auth";
 import { useRouter } from "next/navigation";
-import styles from "./Auth.module.css";
+import styles from "../Auth.module.css";
 
 export const RegisterForm = () => {
   const [email, setEmail] = useState("");

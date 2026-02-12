@@ -5,7 +5,7 @@ import Link from "next/link";
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
-import styles from "./Auth.module.css";
+import styles from "../Auth.module.css";
 
 export const LoginForm = () => {
   const [email, setEmail] = useState("");

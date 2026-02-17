@@ -23,6 +23,17 @@ app.include_router(users_router)
 async def read_root() -> dict:
     return {"message": "Welcome to fast_api_initializer"}
 
+@app.get("/health", tags=["health"])
+async def health_check() -> dict:
+    """Check overall health status of the application."""
+    return {
+        "status": "ok",
+        "services": {
+            "firebase": check_firebase_connection(),
+            "supabase": check_supabase_connection()
+        }
+    }
+
 
 @app.get("/health/firebase", tags=["health"])
 async def firebase_health() -> dict:

@@ -4,6 +4,11 @@ import "@/assets/styles/globals.css";
 export const metadata = {
   title: "iTap",
   description: "Tap in. Stay synced.",
+  icons: {
+    icon: [{ url: "/images/meta_logo.svg" }],
+    shortcut: ["/images/meta_logo.svg"],
+    apple: [{ url: "/images/meta_logo.svg" }],
+  },
 };
 
 export default function RootLayout({ children }) {

@@ -20,6 +20,11 @@
   padding: 96px clamp(24px, 6vw, 120px);
 }
 
+.logo {
+  width: 140px;
+  height: auto;
+}
+
 .badge {
   width: fit-content;
   border-radius: 999px;

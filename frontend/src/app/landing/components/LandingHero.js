@@ -1,10 +1,19 @@
 import Link from "next/link";
+import Image from "next/image";
 import styles from "./LandingHero.module.css";
 
 export const LandingHero = () => {
   return (
     <div className={styles.page}>
       <main className={styles.main}>
+        <Image
+          src="/images/meta_logo.svg"
+          alt="iTap logo"
+          width={140}
+          height={110}
+          priority
+          className={styles.logo}
+        />
         <div className={styles.badge}>iTap beta</div>
         <div className={styles.hero}>
           <h1>Tap in. Stay synced. Shop smarter.</h1>
